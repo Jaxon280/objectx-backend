@@ -1,5 +1,5 @@
 # 物体X Backend API
-- `Host` : 未定、フロントエンド側と同じドメイン名を取得してから決定した方が良さそう。
+- `Host` : `http://157.230.43.94` (テスト用)
 
 ## GET /images
 - 画像とそれに付随するパラメータを全て取得する用のAPI
@@ -10,38 +10,36 @@
 
 #### Response
 
-以下の要素を持つJSONの配列を返す。
+画像とその関連データをまとめたデータの固有IDを Key、と以下の要素を持つ JSON を Value に持つ Key-Value のリストを JSON で返す。
+また、アクセス負荷の軽減のために最大でも 40 個の Key-Value を読み込むように設定している。
 
 - `id` : 画像の固有ID
-- `index` : 全体の投稿順
-- `sentiment` : 感情の種類。ユーザーが入力してもらう感情の値をバックエンド側で解析し、"sad" "happy" など文字列で値を返す
-- `brightness` : 画像の明度
+- `sentiment` : 感情の種類。`[-1,1]` の範囲で値を返す
+- `brightness` : 画像の明度 ( `HSV` のうち `Value` ) を返す。`Value` は `0-255` の範囲なので、画像の平均の明度が分かる。
+- `tone` : 画像の色相 ( `HSV` のうち `Hue` ) を返す。`Hue` は `0-360` の範囲なので、色見本と対応させて画像の平均の色調が分かる。
 - `created` : 画像の投稿日時（UNIX時間）
-- `tone` : 画像の色調。文字列で返す
 - `image_url` : 画像へのURL
 
 *Example*
 ```
-[
-    {
-        "id": "8dae53ae24589c", // string
-        "index": 1, // integer
-        "sentiment": "happy", // string
-        "brightness": 32, // integer
-        "created": 1419933529 // integer,
-        "tone": "yellow", // string
-        "image_url": "https://res.cloudinary.com/demo/image/upload/v143535505/sample.png" // string
+{
+    "6cb9a97c-4a7f-4225-ae04-c15e18c8caed": {
+        "id": "6cb9a97c-4a7f-4225-ae04-c15e18c8caed",
+        "sentiment": 0.3,
+        "brightness": 148.59068468585255,
+        "tone": 104.2402622936652,
+        "created": 1605725152,
+        "image_url": "https://objectx.ams3.cdn.digitaloceanspaces.com/245435e0-2dc1-4b52-b96a-b7db28d73303.png"
     },
-    {
-        "id": "8daff3ae24589c", // string
-        "index": 2, // integer
-        "sentiment": "sad", // string
-        "brightness": 129, // integer
-        "created": 1419990556 // integer,
-        "tone": "blue", // string
-        "image_url": "https://res.cloudinary.com/demo/image/upload/v143535505/sample.png" // string
+    "ae7d7706-55b3-44da-ae5c-093e403fe1d8": {
+        "id": "ae7d7706-55b3-44da-ae5c-093e403fe1d8",
+        "sentiment": 0.3,
+        "brightness": 148.59068468585255,
+        "tone": 104.2402622936652,
+        "created": 1605721379,
+        "image_url": "https://objectx.ams3.cdn.digitaloceanspaces.com/2ac440b2-40cb-4072-8f64-fd1f853fe630.png"
     }
-]
+}
 ```
 
 ## GET /images/{id}
@@ -56,71 +54,56 @@
 以下の要素を持つJSONを返す。
 
 - `id` : 画像の固有ID
-- `index` : 全体の投稿順
-- `sentiment` : 感情の種類。ユーザーが入力してもらう感情の値をバックエンド側で解析し、"sad" "happy" など文字列で値を返す
-- `brightness` : 画像の明度
+- `sentiment` : 感情の種類。`[-1,1]` の範囲で値を返す
+- `brightness` : 画像の明度 ( `HSV` のうち `Value` ) を返す。`Value` は `0-255` の範囲なので、画像の平均の明度が分かる。
+- `tone` : 画像の色相 ( `HSV` のうち `Hue` ) を返す。`Hue` は `0-360` の範囲なので、色見本と対応させて画像の平均の色調が分かる。
 - `created` : 画像の投稿日時（UNIX時間）
-- `tone` : 画像の色調。文字列で返す
 - `image_url` : 画像へのURL
 
 *Example*
 ```
 {
-    "id": "8daff3ae24589c", // string
-    "index": 2, // integer
-    "sentiment": "sad", // string
-    "brightness": 129, // integer
-    "created": 1419990556 // integer,
-    "tone": "blue", // string
-    "image_url": "https://res.cloudinary.com/demo/image/upload/v143535505/sample.png" // string
+    "id": "98850a82-01e7-46aa-aa74-71637d53ab62",
+    "sentiment": 0.3,
+    "brightness": 148.59068468585255,
+    "tone": 104.2402622936652,
+    "created": 1605721308,
+    "image_url": "https://objectx.ams3.cdn.digitaloceanspaces.com/3779cb61-ff79-4665-b3b2-9acf3af41145.png"
 }
 ```
 
 
-## POST /images
+## POST /upload
 - 画像をパラメータと共に投稿する用のAPI
-- `Content-Type` : **multipart/form-data**
-    - JSONの部分
-        - `Content-Type` : **application/json**
-        - `name` : **params**
-    - 画像の部分
-        - `Content-Type` : **image/png**
-        - `name` : **image**
 
 #### Parameter
+- `Content-Type` : **multipart/form-data**
+    - 感情パラメータの部分
+        - `name` : **sentiment**
+    - 画像ファイルの部分
+        - `name` : **image**
 
 #### Request
--> パラメータのフォーマットが未定なので決定できない
-以下のようなJSONと画像 (PNG形式) を送信する。
-
-```
-{
-    "sentiment": "sad", // string
-    "strength": 12 // integer
-}
-```
 
 #### Response
 以下の要素を持つJSONを返す。
 
 - `id` : 画像の固有ID
-- `index` : 全体の投稿順
-- `sentiment` : 感情の種類。ユーザーが入力してもらう感情の値をバックエンド側で解析し、"sad" "happy" など文字列で値を返す
-- `brightness` : 画像の明度
+- `sentiment` : 感情の種類。`[-1,1]` の範囲で値を返す
+- `brightness` : 画像の明度 ( `HSV` のうち `Value` ) を返す。`Value` は `0-255` の範囲なので、画像の平均の明度が分かる。
+- `tone` : 画像の色相 ( `HSV` のうち `Hue` ) を返す。`Hue` は `0-360` の範囲なので、色見本と対応させて画像の平均の色調が分かる。
 - `created` : 画像の投稿日時（UNIX時間）
-- `tone` : 画像の色調。文字列で返す
 - `image_url` : 画像へのURL
 
 *Example*
 ```
 {
-    "id": "8daff3ae24589c", // string
-    "index": 2, // integer
-    "sentiment": "sad", // string
-    "brightness": 129, // integer
-    "created": 1419990556 // integer,
-    "tone": "blue", // string
-    "image_url": "https://res.cloudinary.com/demo/image/upload/v143535505/sample.png" // string
+    "id": "b2627085-1f22-4372-8494-fa3830271ae0",
+    "sentiment": 0.3,
+    "brightness": 148.59068468585255,
+    "tone": 104.2402622936652,
+    "created": 1605727252,
+    "image_url": "https://objectx.ams3.cdn.digitaloceanspaces.com/819687d5-0b99-4339-af73-810258d63c37.png"
 }
 ```
 
@@ -140,7 +123,7 @@
 *Example*
 ```
 {
-    "id": "8daff3ae24589c" // string
+    "id": "98850a82-01e7-46aa-aa74-71637d53ab62"
 }
 ```
 
@@ -157,6 +140,6 @@
 *Example*
 ```
 {
-    "message": "Something went wrong"
+    "message": "http: no such file"
 }
 ```

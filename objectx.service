@@ -1,0 +1,11 @@
+[Unit]
+Description=BackEnd for Object-X
+After=network.service
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/local/bin/objectx
+
+[Install]
+WantedBy=multi-user.target
