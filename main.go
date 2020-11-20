@@ -20,6 +20,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
 	"gocv.io/x/gocv"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 const (
@@ -216,6 +217,7 @@ func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request, _ httprout
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "http://dp9.tokyo")
 	if _, err := w.Write(bytes); err != nil {
 		s.writeError(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -293,6 +295,7 @@ func (s *Server) uploadHandler(w http.ResponseWriter, r *http.Request, _ httprou
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "http://dp9.tokyo")
 	w.WriteHeader(http.StatusCreated)
 	if _, err := w.Write(js); err != nil {
 		s.writeError(w, err.Error(), http.StatusInternalServerError)
@@ -317,6 +320,7 @@ func (s *Server) pickHandler(w http.ResponseWriter, r *http.Request, ps httprout
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "http://dp9.tokyo")
 	if _, err := w.Write(js); err != nil {
 		s.writeError(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -336,6 +340,7 @@ func (s *Server) deleteHandler(w http.ResponseWriter, r *http.Request, ps httpro
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "http://dp9.tokyo")
 	if _, err := w.Write(js); err != nil {
 		s.writeError(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -366,7 +371,8 @@ func newServer(dbPath string) (*Server, error) {
 }
 
 func main() {
-	err := os.Chdir(filepath.Join("/root", "go", "src", "objectx-backend")) // if in local ENV, os.Chdir(filepath.Join("/home", "environment", "go", "src", "objectx-backend"))
+	// err := os.Chdir(filepath.Join("/root", "go", "src", "objectx-backend")) // if in local ENV,
+	err := os.Chdir(filepath.Join("/Users/keresu0720", "environment", "go", "src", "objectx-backend"))
 	if err != nil {
 		log.Fatal(err.Error())
 		os.Exit(1)
@@ -392,5 +398,23 @@ func main() {
 
 	fmt.Println("Start Server...")
 
-	log.Fatal(http.ListenAndServe(":80", router))
+	domain := "object-x.tokyo"
+	m := &autocert.Manager{
+		Cache:      autocert.DirCache("secrets"),
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist(domain),
+	}
+	s := &http.Server{
+		Addr:      ":https",
+		Handler:   router,
+		TLSConfig: m.TLSConfig(),
+	}
+
+	log.Printf("Serving http/https for domain: %s", domain)
+	go func() {
+		// serve HTTP, which will redirect automatically to HTTPS
+		h := m.HTTPHandler(nil)
+		log.Fatal(http.ListenAndServe(":http", h))
+	}()
+	log.Fatal(s.ListenAndServeTLS("", ""))
 }
